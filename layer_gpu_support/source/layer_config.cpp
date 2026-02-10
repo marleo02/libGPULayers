@@ -67,6 +67,97 @@ void LayerConfig::parse_feature_options(const json& config)
     LAYER_LOG(" - Robust buffer access: %s", rba_state);
 }
 
+/* See header for documentation. */
+void LayerConfig::parse_override_extensions_options(const json& config)
+{
+    json ext = config.at("override_extensions");
+
+    const auto raw_instance = ext.at("instance").get<std::unordered_map<std::string, std::string>>();
+    const auto raw_device = ext.at("device").get<std::unordered_map<std::string, std::string>>();
+
+    conf_extension_instance_overrides.clear();
+    conf_extension_instance_overrides.reserve(raw_instance.size());
+    for (const auto& entry : raw_instance)
+    {
+        if ((entry.second != "do_not_override") &&
+            (entry.second != "remove") &&
+            (entry.second != "insert"))
+        {
+            LAYER_ERR("Invalid override action: %s", entry.second.c_str());
+            conf_extension_instance_overrides.emplace(entry.first, "do_not_override");
+        }
+        else
+        {
+            conf_extension_instance_overrides.emplace(entry.first, entry.second);
+        }
+    }
+
+    conf_extension_device_overrides.clear();
+    conf_extension_device_overrides.reserve(raw_device.size());
+    for (const auto& entry : raw_device)
+    {
+        if ((entry.second != "do_not_override") &&
+            (entry.second != "remove") &&
+            (entry.second != "insert"))
+        {
+            LAYER_ERR("Invalid override action: %s", entry.second.c_str());
+            conf_extension_device_overrides.emplace(entry.first, "do_not_override");
+        }
+        else
+        {
+            conf_extension_device_overrides.emplace(entry.first, entry.second);
+        }
+    }
+
+    LAYER_LOG("Layer extensions override configuration");
+    LAYER_LOG("======================================");
+    for (const auto& entry : conf_extension_instance_overrides)
+    {
+        LAYER_LOG(" - Override instance extension: %s = %s",
+                  entry.first.c_str(),
+                  entry.second.c_str());
+    }
+    for (const auto& entry : conf_extension_device_overrides)
+    {
+        LAYER_LOG(" - Override device extension: %s = %s",
+                  entry.first.c_str(),
+                  entry.second.c_str());
+    }
+}
+
+/* See header for documentation. */
+void LayerConfig::parse_override_features_options(const json& config)
+{
+    json feat = config.at("override_features");
+
+    const auto raw_features = feat.get<std::unordered_map<std::string, std::string>>();
+
+    conf_feature_overrides.clear();
+    conf_feature_overrides.reserve(raw_features.size());
+    for (const auto& entry : raw_features)
+    {
+        if ((entry.second != "do_not_override") &&
+            (entry.second != "remove") &&
+            (entry.second != "insert"))
+        {
+            LAYER_ERR("Invalid override action: %s", entry.second.c_str());
+            conf_feature_overrides.emplace(entry.first, "do_not_override");
+        }
+        else
+        {
+            conf_feature_overrides.emplace(entry.first, entry.second);
+        }
+    }
+
+    LAYER_LOG("Layer features override configuration");
+    LAYER_LOG("====================================");
+    for (const auto& entry : conf_feature_overrides)
+    {
+        LAYER_LOG(" - Override feature: %s = %s",
+                  entry.first.c_str(),
+                  entry.second.c_str());
+    }
+}
 
 /* See header for documentation. */
 void LayerConfig::parse_serialization_options(const json& config)
@@ -281,6 +372,26 @@ LayerConfig::LayerConfig()
 
     try
     {
+        parse_override_extensions_options(data);
+    }
+    catch (const json::out_of_range& e)
+    {
+        LAYER_ERR("Failed to read extension config, using defaults");
+        LAYER_ERR("Error: %s", e.what());
+    }
+
+    try
+    {
+        parse_override_features_options(data);
+    }
+    catch (const json::out_of_range& e)
+    {
+        LAYER_ERR("Failed to read feature override config, using defaults");
+        LAYER_ERR("Error: %s", e.what());
+    }
+
+    try
+    {
         parse_serialization_options(data);
     }
     catch (const json::out_of_range& e)
@@ -320,6 +431,26 @@ bool LayerConfig::feature_enable_robustBufferAccess() const
 bool LayerConfig::feature_disable_robustBufferAccess() const
 {
     return conf_feat_robustBufferAccess_disable;
+}
+
+/* See header for documentation. */
+const std::unordered_map<std::string, std::string>&
+LayerConfig::extension_instance_overrides() const
+{
+    return conf_extension_instance_overrides;
+}
+
+/* See header for documentation. */
+const std::unordered_map<std::string, std::string>&
+LayerConfig::extension_device_overrides() const
+{
+    return conf_extension_device_overrides;
+}
+
+/* See header for documentation. */
+const std::unordered_map<std::string, std::string>& LayerConfig::feature_overrides() const
+{
+    return conf_feature_overrides;
 }
 
 /* See header for documentation. */

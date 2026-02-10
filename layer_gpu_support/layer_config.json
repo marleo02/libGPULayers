@@ -4,6 +4,17 @@
         "robustBufferAccess_enable": false,
         "robustBufferAccess_disable": false
     },
+    "override_extensions": {
+        "instance": {
+            "VK_EXT_debug_utils": "do_not_override"
+        },
+        "device": {
+            "VK_KHR_timeline_semaphore": "do_not_override"
+        }
+    },
+    "override_features": {
+        "VkPhysicalDeviceFeatures.robustBufferAccess": "do_not_override"
+    },
     "serialize": {
         "all": false,
         "none": false,

@@ -69,6 +69,10 @@ The following override groups are supported:
 
 * **Feature:** control use of optional Vulkan features that might impact
   correctness and performance.
+* **Override Extensions:** control explicit insertion or removal of instance
+  and device extensions.
+* **Override Features:** control explicit insertion or removal of optional
+  features exposed to the application.
 * **Serialization:** control serialization of GPU workload scheduling to
   diagnose issues caused by missing queue or command stream synchronization.
 * **Shaders and Pipelines:** control shader pipeline compilation to diagnose
@@ -92,6 +96,58 @@ avoid ambiguous settings.
 "feature": {
     "robustBufferAccess_enable": false, // Force enable robustBufferAccess
     "robustBufferAccess_disable": false // Force disable robustBufferAccess
+},
+```
+
+### Override Extensions
+
+The extension overrides allow forceful insertion or removal of specific
+extensions from the application provided lists. Each listed extension is
+assigned a single override action.
+
+The valid actions are:
+
+* `do_not_override`: leave the extension list unchanged.
+* `remove`: remove the extension from the list, if present.
+* `insert`: insert the extension into the list, if missing.
+
+#### Configuration options
+
+```jsonc
+"override_extensions": {
+    "instance": {
+        "VK_EXT_debug_utils": "do_not_override"
+    },
+    "device": {
+        "VK_KHR_timeline_semaphore": "do_not_override"
+    }
+},
+```
+
+### Override Features
+
+The feature overrides allow forceful insertion or removal of optional
+features exposed to the application. Each listed feature is assigned a
+single override action.
+
+Feature keys must be fully qualified as `StructName.feature`, where
+`StructName` is the Vulkan feature struct that defines the field. This
+removes ambiguity between promoted extensions and core features.
+
+Feature overrides map to all `VkPhysicalDevice*Features` structs defined in
+`vk.xml`, including extension feature structs found in the `pNext` chain.
+
+The valid actions are:
+
+* `do_not_override`: leave the feature unchanged.
+* `remove`: force the feature off, if present.
+* `insert`: force the feature on, if supported by the driver.
+
+#### Configuration options
+
+```jsonc
+"override_features": {
+    "VkPhysicalDeviceFeatures.robustBufferAccess": "do_not_override"
 },
 ```
 

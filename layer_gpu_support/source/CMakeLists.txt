@@ -39,11 +39,27 @@ configure_file(
     version.hpp
     ESCAPE_QUOTES @ONLY)
 
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+set(VK_XML_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../source_third_party/khronos/vulkan/registry/vk.xml)
+
+set(GENERATED_FEATURE_OVERRIDES ${CMAKE_CURRENT_BINARY_DIR}/generated_feature_overrides.hpp)
+
+add_custom_command(
+    OUTPUT ${GENERATED_FEATURE_OVERRIDES}
+    COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/gen_feature_overrides.py
+            ${VK_XML_PATH}
+            ${GENERATED_FEATURE_OVERRIDES}
+    DEPENDS ${VK_XML_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/gen_feature_overrides.py
+    COMMENT "Generating feature override table from vk.xml")
+
 add_library(
     ${VK_LAYER} SHARED
         ../../source_common/framework/entry.cpp
         device.cpp
         instance.cpp
+        layer_instance_functions.cpp
         layer_config.cpp
         layer_device_functions_dispatch.cpp
         layer_device_functions_image.cpp
@@ -51,7 +67,8 @@ add_library(
         layer_device_functions_queue.cpp
         layer_device_functions_render_pass.cpp
         layer_device_functions_trace_rays.cpp
-        layer_device_functions_transfer.cpp)
+        layer_device_functions_transfer.cpp
+        ${GENERATED_FEATURE_OVERRIDES})
 
 target_include_directories(
     ${VK_LAYER} PRIVATE

@@ -33,6 +33,9 @@
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
+#include <string>
+#include <unordered_map>
+
 /**
  * @brief This class implements a config interface for this layer.
  *
@@ -60,6 +63,25 @@ public:
      * @brief True if config wants to serialize queue submits with the CPU.
      */
     bool feature_disable_robustBufferAccess() const;
+
+    // Config queries for extension overrides
+
+    /**
+     * @brief List of instance extensions to override.
+     */
+    const std::unordered_map<std::string, std::string>& extension_instance_overrides() const;
+
+    /**
+     * @brief List of device extensions to override.
+     */
+    const std::unordered_map<std::string, std::string>& extension_device_overrides() const;
+
+    // Config queries for feature overrides
+
+    /**
+     * @brief List of features to override.
+     */
+    const std::unordered_map<std::string, std::string>& feature_overrides() const;
 
     // Config queries for serializer
 
@@ -176,6 +198,24 @@ private:
     void parse_feature_options(const json& config);
 
     /**
+     * @brief Parse the configuration options for extension overrides.
+     *
+     * @param config   The JSON configuration.
+     *
+     * @throws json::out_of_bounds if required fields are missing.
+     */
+    void parse_override_extensions_options(const json& config);
+
+    /**
+     * @brief Parse the configuration options for feature overrides.
+     *
+     * @param config   The JSON configuration.
+     *
+     * @throws json::out_of_bounds if required fields are missing.
+     */
+    void parse_override_features_options(const json& config);
+
+    /**
      * @brief Parse the configuration options for the serializer.
      *
      * @param config   The JSON configuration.
@@ -212,6 +252,21 @@ private:
      * @brief True if we force disable robustBufferAccess.
      */
     bool conf_feat_robustBufferAccess_disable {false};
+
+    /**
+     * @brief Instance extensions to override.
+     */
+    std::unordered_map<std::string, std::string> conf_extension_instance_overrides {};
+
+    /**
+     * @brief Device extensions to override.
+     */
+    std::unordered_map<std::string, std::string> conf_extension_device_overrides {};
+
+    /**
+     * @brief Features to override.
+     */
+    std::unordered_map<std::string, std::string> conf_feature_overrides {};
 
     /**
      * @brief True if we force serialize all queue submits.
@@ -315,4 +370,5 @@ private:
      * If zero, then no force is set and default compression will be used.
      */
     uint32_t conf_framebuffer_force_fixed_rate_compression {0};
+
 };
