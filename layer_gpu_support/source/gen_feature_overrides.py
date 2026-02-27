@@ -80,8 +80,10 @@ def load_feature_structs(vk_xml_path: str) -> list[FeatureStruct]:
             enum_node = member.find("enum")
             if type_node is None or name_node is None:
                 continue
-            if name_node.text == "sType" and enum_node is not None:
-                s_type = enum_node.text
+            if name_node.text == "sType":
+                s_type = member.get("values")
+                if s_type is None and enum_node is not None:
+                    s_type = enum_node.text
             if type_node.text == "VkBool32":
                 fields.append(name_node.text)
 
