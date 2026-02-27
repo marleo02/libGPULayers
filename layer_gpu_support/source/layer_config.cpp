@@ -31,6 +31,7 @@
 #include "layer_config.hpp"
 
 #include "framework/utils.hpp"
+#include "generated_feature_overrides.hpp"
 #include "version.hpp"
 
 #include <fstream>
@@ -83,6 +84,7 @@ void LayerConfig::parse_override_extensions_options(const json& config)
             (entry.second != "remove") &&
             (entry.second != "insert"))
         {
+            conf_has_fatal_errors = true;
             LAYER_ERR("Invalid override action: %s", entry.second.c_str());
             conf_extension_instance_overrides.emplace(entry.first, "do_not_override");
         }
@@ -100,6 +102,7 @@ void LayerConfig::parse_override_extensions_options(const json& config)
             (entry.second != "remove") &&
             (entry.second != "insert"))
         {
+            conf_has_fatal_errors = true;
             LAYER_ERR("Invalid override action: %s", entry.second.c_str());
             conf_extension_device_overrides.emplace(entry.first, "do_not_override");
         }
@@ -136,10 +139,36 @@ void LayerConfig::parse_override_features_options(const json& config)
     conf_feature_overrides.reserve(raw_features.size());
     for (const auto& entry : raw_features)
     {
+        bool known_feature = false;
+        for (size_t i = 0; i < featureOverrideEntryCount; i++)
+        {
+            if (entry.first == featureOverrideEntries[i].name)
+            {
+                known_feature = true;
+                break;
+            }
+        }
+
+        if (!known_feature)
+        {
+            conf_has_fatal_errors = true;
+            if (entry.first.find('.') == std::string::npos)
+            {
+                LAYER_ERR("Invalid feature override key (expected StructName.field): %s",
+                          entry.first.c_str());
+            }
+            else
+            {
+                LAYER_ERR("Unknown feature override: %s", entry.first.c_str());
+            }
+            continue;
+        }
+
         if ((entry.second != "do_not_override") &&
             (entry.second != "remove") &&
             (entry.second != "insert"))
         {
+            conf_has_fatal_errors = true;
             LAYER_ERR("Invalid override action: %s", entry.second.c_str());
             conf_feature_overrides.emplace(entry.first, "do_not_override");
         }
@@ -376,7 +405,8 @@ LayerConfig::LayerConfig()
     }
     catch (const json::out_of_range& e)
     {
-        LAYER_ERR("Failed to read extension config, using defaults");
+        conf_has_fatal_errors = true;
+        LAYER_ERR("Failed to read extension config; aborting due to invalid override_extensions");
         LAYER_ERR("Error: %s", e.what());
     }
 
@@ -386,7 +416,8 @@ LayerConfig::LayerConfig()
     }
     catch (const json::out_of_range& e)
     {
-        LAYER_ERR("Failed to read feature override config, using defaults");
+        conf_has_fatal_errors = true;
+        LAYER_ERR("Failed to read feature override config; aborting due to invalid override_features");
         LAYER_ERR("Error: %s", e.what());
     }
 
@@ -451,6 +482,12 @@ LayerConfig::extension_device_overrides() const
 const std::unordered_map<std::string, std::string>& LayerConfig::feature_overrides() const
 {
     return conf_feature_overrides;
+}
+
+/* See header for documentation. */
+bool LayerConfig::has_fatal_errors() const
+{
+    return conf_has_fatal_errors;
 }
 
 /* See header for documentation. */

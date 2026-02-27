@@ -99,6 +99,11 @@ VKAPI_ATTR VkResult VKAPI_CALL layer_vkCreateInstance<user_tag>(
     }
 
     LayerConfig config;
+    if (config.has_fatal_errors())
+    {
+        LAYER_ERR("Invalid layer config; aborting vkCreateInstance");
+        return VK_ERROR_INITIALIZATION_FAILED;
+    }
 
     auto* chainInfo = getChainInfo(pCreateInfo);
     auto fpGetInstanceProcAddr = chainInfo->u.pLayerInfo->pfnNextGetInstanceProcAddr;

@@ -83,6 +83,11 @@ public:
      */
     const std::unordered_map<std::string, std::string>& feature_overrides() const;
 
+    /**
+     * @brief True if the loaded config contains validation errors.
+     */
+    bool has_fatal_errors() const;
+
     // Config queries for serializer
 
     /**
@@ -267,6 +272,11 @@ private:
      * @brief Features to override.
      */
     std::unordered_map<std::string, std::string> conf_feature_overrides {};
+
+    /**
+     * @brief True if config loading detected invalid content.
+     */
+    bool conf_has_fatal_errors {false};
 
     /**
      * @brief True if we force serialize all queue submits.
