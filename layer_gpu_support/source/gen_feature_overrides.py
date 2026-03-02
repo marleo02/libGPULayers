@@ -23,7 +23,9 @@
 # ----------------------------------------------------------------------------
 
 import sys
+import re
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from typing import Optional
 
 
@@ -62,9 +64,35 @@ def parse_guard(struct: ET.Element) -> Optional[str]:
     return " && ".join([f"defined({g})" for g in guards])
 
 
+def load_header_symbols(vk_xml_path: str) -> tuple[set[str], set[str]]:
+    """
+    Load available Vulkan type names and VK_STRUCTURE_TYPE enums from the
+    Vulkan-Headers checkout that owns vk.xml.
+    """
+    vk_xml = Path(vk_xml_path).resolve()
+    vulkan_root = vk_xml.parent.parent  # .../khronos/vulkan
+    core_h = vulkan_root / "include" / "vulkan" / "vulkan_core.h"
+    if not core_h.is_file():
+        raise RuntimeError(f"Could not locate Vulkan core header: {core_h}")
+
+    text = core_h.read_text(encoding="utf-8", errors="ignore")
+
+    # Struct/alias typedef names (Vk* tokens introduced by typedefs).
+    type_names = set(
+        re.findall(r"typedef\s+[A-Za-z0-9_\s\*]+?\s+(Vk[A-Za-z0-9_]+)\s*;", text)
+    )
+    # Also include names declared as closing typedef tags for structs/unions.
+    type_names.update(re.findall(r"}\s*(Vk[A-Za-z0-9_]+)\s*;", text))
+
+    struct_type_enums = set(re.findall(r"\b(VK_STRUCTURE_TYPE_[A-Za-z0-9_]+)\b", text))
+
+    return type_names, struct_type_enums
+
+
 def load_feature_structs(vk_xml_path: str) -> list[FeatureStruct]:
     tree = ET.parse(vk_xml_path)
     root = tree.getroot()
+    available_types, available_stypes = load_header_symbols(vk_xml_path)
 
     structs = []
     for struct in root.findall("./types/type[@category='struct']"):
@@ -80,16 +108,23 @@ def load_feature_structs(vk_xml_path: str) -> list[FeatureStruct]:
             enum_node = member.find("enum")
             if type_node is None or name_node is None:
                 continue
-            if name_node.text == "sType":
-                s_type = member.get("values")
-                if s_type is None and enum_node is not None:
-                    s_type = enum_node.text
+            if name_node.text == "sType" and enum_node is not None:
+                s_type = enum_node.text
             if type_node.text == "VkBool32":
                 fields.append(name_node.text)
 
         if fields:
             guard = parse_guard(struct)
             if name != "VkPhysicalDeviceFeatures" and s_type is None:
+                continue
+            # Only generate entries that are actually available in the checked-out headers.
+            if name not in available_types:
+                continue
+            if (
+                name != "VkPhysicalDeviceFeatures"
+                and s_type is not None
+                and s_type not in available_stypes
+            ):
                 continue
             structs.append(FeatureStruct(name, s_type, fields, guard))
 
@@ -130,6 +165,7 @@ def write_header(out_path: str, structs: list[FeatureStruct]) -> None:
         out.write("#include <cstdint>\n")
         out.write("#include <cstring>\n")
         out.write("#include <vulkan/vulkan.h>\n")
+        out.write("#include <vulkan/utility/vk_safe_struct.hpp>\n")
         out.write("#include <vulkan/utility/vk_safe_struct_utils.hpp>\n\n")
         out.write("enum class FeatureStructId\n")
         out.write("{\n")
